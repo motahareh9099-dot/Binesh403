@@ -1,0 +1,236 @@
+<!--
+راهنما و دستورالعمل (به فارسی)
+
+فایل: index.html
+قابل اجرا: روی لپ‌تاپ شما (لوکال) یا هاست ساده مثل GitHub Pages یا Netlify
+
+ساختار و نحوه کار (خلاصه):
+- یک پوشه به نام `media/` در کنار این فایل بسازید و همه فایل‌های صوتی (mp3, m4a...) و PDFها را داخل آن قرار دهید.
+- در داخل همین فایل، متغیر JavaScript به نام `episodes` وجود دارد — یک آرایه از آبجکت‌ها. برای اضافه کردن اپیزود/مقاله جدید کافی است یک آبجکت جدید به آرایه اضافه کنید یا از فرم داخل صفحه JSON را وارد کنید.
+- برای اجرای لوکال: روی index.html دوبار کلیک کنید یا در پوشه پروژه در ترمینال دستور زیر را بزنید:
+    python -m http.server 8000
+  و سپس در مرورگر به http://localhost:8000 بروید.
+
+نکات مهم:
+- اگر می‌خواهید پادکست شما در اپلیکیشن‌های پادکست (مثل Apple Podcasts یا Google Podcasts) قرار بگیرد، نیاز به یک فایل RSS (feed.xml) دارید. داخل این فایل یک دکمه "تولید RSS" گذاشته‌ام که با وارد کردن آدرس پایه سایت (Base URL) فایل RSS را برای شما می‌سازد.
+- اگر می‌خواهید آپلود مستقیم از طریق سایت انجام شود (یعنی کاربران فایل را از طریق فرم آپلود روی سایت بگذارند)، نیاز به یک سرور و اسکریپت سمت سرور دارید — نه با HTML/CSS/JS ساده قابل انجام است. اگر خواستید من می‌توانم سرور ساده با Node.js یا PHP برای آپلود پیشنهاد کنم.
+
+نحوه انتشار روی GitHub Pages (خلاصه):
+1) یک حساب GitHub بسازید (اگر ندارید).
+2) یک مخزن (repository) جدید بسازید.
+3) در پوشه پروژه (روی لپ‌تاپ):
+   git init
+   git add .
+   git commit -m "Initial site"
+   git branch -M main
+   git remote add origin https://github.com/USERNAME/REPO.git
+   git push -u origin main
+4) در GitHub به تنظیمات مخزن بروید -> Pages -> branch: main / root -> Save. آدرس سایت (مثلاً https://USERNAME.github.io/REPO/) نمایش داده می‌شود.
+
+اگر با Git آشنایی ندارید و دوست دارید من یک مخزن آماده بسازم و شما فقط فایل‌ها را آپلود کنید، بگویید تا راهنمایی کامل‌تر بدهم.
+
+-----------------------------------------------------------------
+حالا خودِ فایل HTML پایین قرار دارد — شامل طراحی ساده، نوار جستجو، فرم افزودن اپیزود به صورت JSON، دکمه خروجی گرفتن از تنظیمات (save JSON) و تولید RSS.
+
+کافی است این کل فایل را با نام index.html ذخیره کنید و پوشه media/ را کنار آن بسازید.
+-->
+
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>نشریه دانشجویی — پادکست‌ها و PDF</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#ffffff;--accent:#2b6cb0;--muted:#666}
+    *{box-sizing:border-box;font-family:IRANSans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    body{margin:0;background:var(--bg);color:#111}
+    header{background:linear-gradient(90deg,#ffffff 0%, #eef6ff 100%);padding:20px 16px;border-bottom:1px solid #e6edf5}
+    .container{max-width:980px;margin:18px auto;padding:0 16px}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 0;color:var(--muted)}
+
+    .controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+    .controls input[type=text], .controls input[type=url]{padding:8px;border:1px solid #d3dce8;border-radius:6px;min-width:220px}
+    button{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.secondary{background:#eef3fb;color:#0b3a66}
+
+    #episodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:18px}
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 4px 10px rgba(29,41,60,0.04);border:1px solid #e7eef8}
+    .card h3{margin:0 0 6px;font-size:16px}
+    .meta{font-size:13px;color:var(--muted);margin-bottom:8px}
+    audio{width:100%;margin-top:8px}
+    .actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    a.link{background:#f2f8ff;padding:6px 8px;border-radius:8px;text-decoration:none;color:#0b4ea2;font-weight:500;border:1px solid #e2efff}
+
+    .panel{background:#fff;padding:12px;border-radius:10px;border:1px solid #eef4fb;margin-top:16px}
+    label{display:block;font-size:13px;margin-bottom:6px}
+    textarea{width:100%;min-height:90px;padding:8px;border-radius:8px;border:1px solid #e2eaf7}
+
+    footer{margin-top:30px;padding:20px 0;color:var(--muted);font-size:13px}
+    @media (max-width:560px){.controls{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>نشریه دانشجویی — پادکست و PDF</h1>
+      <p class="lead">محل قرارگیری پادکست‌ها و فایل‌های PDF شما. فایل‌های صوتی و PDF را در پوشه <code>media/</code> بگذارید و در آرایهٔ اپیزودها مشخص کنید.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="controls">
+      <input type="text" id="search" placeholder="جستجو در عنوان یا توضیح..." />
+      <input type="url" id="baseUrl" placeholder="آدرس پایه سایت برای RSS (مثال: https://USERNAME.github.io/REPO)" />
+      <button id="btnGenRSS" title="ساختن فایل RSS">تولید RSS</button>
+      <button id="btnExportJSON" class="secondary" title="دریافت فایل JSON با اطلاعات اپیزودها">دریافت JSON</button>
+    </div>
+
+    <div id="episodes" aria-live="polite"></div>
+
+    <div class="panel">
+      <h3>افزودن اپیزود (از JSON)</h3>
+      <label>یک آبجکت JSON درست مثل نمونه را اینجا وارد کنید و روی «افزودن» کلیک کنید. (این تغییر فقط روی همین صفحه اعمال می‌شود — برای ذخیره دائمی فایل JSON را دانلود کنید)</label>
+      <textarea id="jsonInput" placeholder='نمونه:\n{ "id":"ep2","title":"عنوان","date":"2025-08-26","audio":"media/ep2.mp3","pdf":"media/notes2.pdf","description":"توضیح" }'></textarea>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btnAdd">افزودن</button>
+        <button id="btnClear" class="secondary">پاک کردن فیلد</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>راهنمای سریع اضافه کردن فایل‌ها</h3>
+      <ol>
+        <li>پوشه‌ای بسازید به نام <code>media/</code> کنار همین فایل index.html</li>
+        <li>فایل صوتی و PDF هر اپیزود را داخل <code>media/</code> قرار دهید، نام فایل‌ها را به یاد داشته باشید.</li>
+        <li>در آرایهٔ <code>episodes</code> داخل اسکریپت پایین یک آبجکت جدید اضافه کنید و مقدار فیلدهای <code>audio</code> و <code>pdf</code> را به مسیر فایل‌ها تغییر دهید.</li>
+        <li>صفحه را دوباره بارگذاری کنید یا از فرم JSON برای افزودن موقت استفاده کنید.</li>
+      </ol>
+    </div>
+
+    <footer>
+      اگر می‌خواهید من این را برایتان روی GitHub Pages فرستاده و فایل‌ها را آماده کنم، بگویید. می‌توانم همچنین قالب را با لوگوی نشریه و رنگ‌های شما شخصی‌سازی کنم و فایل RSS کامل تولید کنم.
+    </footer>
+  </main>
+
+  <script>
+    // === دادهٔ نمونه: آرایهٔ اپیزودها ===
+    // برای افزودن اپیزود جدید کافی است یک آبجکت جدید به این آرایه اضافه کنید.
+    const episodes = [
+      {
+        id: "ep1",
+        title: "نمونه: تاثیر اضطراب بر نقاشی",
+        date: "2025-08-26",
+        audio: "media/مقاله1.mp3",
+        pdf: "media/احمدرضا.pdf",
+        description: "این یک نمونه اپیزود است. فایل sample.mp3 و sample.pdf را در پوشه media قرار دهید."
+      }
+    ];
+
+    // === توابع رندر ===
+    const episodesContainer = document.getElementById('episodes');
+    const searchInput = document.getElementById('search');
+
+    function escapeHtml(str){
+      if(!str) return '';
+      return str.replace(/[&<>\"]/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+      });
+    }
+
+    function render(list){
+      episodesContainer.innerHTML = '';
+      if(list.length === 0){
+        episodesContainer.innerHTML = '<p style="color:#666">هیچ اپیزودی پیدا نشد.</p>';
+        return;
+      }
+      list.forEach(ep => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${escapeHtml(ep.title)}</h3>
+          <div class="meta">${escapeHtml(ep.date || '')}</div>
+          <div>${escapeHtml(ep.description || '')}</div>
+          <audio controls preload="none" src="${escapeHtml(ep.audio)}">مرورگر شما از صوت پشتیبانی نمی‌کند</audio>
+          <div class="actions">
+            <a class="link" href="${escapeHtml(ep.pdf)}" target="_blank" rel="noopener">مشاهده / دانلود PDF</a>
+            <a class="link" href="${escapeHtml(ep.audio)}" download>دانلود صوت</a>
+          </div>
+        `;
+        episodesContainer.appendChild(card);
+      })
+    }
+
+    render(episodes);
+
+    // === جستجو ===
+    searchInput.addEventListener('input', ()=>{
+      const q = searchInput.value.trim().toLowerCase();
+      if(!q){ render(episodes); return; }
+      const filtered = episodes.filter(ep => (ep.title || '').toLowerCase().includes(q) || (ep.description || '').toLowerCase().includes(q));
+      render(filtered);
+    });
+
+    // === افزودن از JSON از فرم ===
+    document.getElementById('btnAdd').addEventListener('click', ()=>{
+      const txt = document.getElementById('jsonInput').value.trim();
+      if(!txt){ alert('لطفاً یک آبجکت JSON وارد کنید.'); return; }
+      try{
+        const obj = JSON.parse(txt);
+        if(!obj.id) obj.id = 'ep' + (episodes.length+1);
+        episodes.unshift(obj);
+        render(episodes);
+        alert('اپیزود اضافه شد (موقتی). برای ذخیره کامل از "دریافت JSON" استفاده کنید یا آبجکت را در کد اضافه کنید.');
+        document.getElementById('jsonInput').value = '';
+      }catch(e){ alert('JSON نامعتبر است: ' + e.message); }
+    });
+    document.getElementById('btnClear').addEventListener('click', ()=>{ document.getElementById('jsonInput').value=''; });
+
+    // === صادرات آرایه به فایل JSON ===
+    document.getElementById('btnExportJSON').addEventListener('click', ()=>{
+      const data = JSON.stringify(episodes, null, 2);
+      const blob = new Blob([data], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'episodes.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // === تولید RSS ساده ===
+    function makeRss(channel){
+      // channel: {title, link, description, episodes: [...]}
+      const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const items = channel.episodes.map(ep => {
+        const audioUrl = ep.fullAudio || ep.audio;
+        const pdfUrl = ep.fullPdf || ep.pdf || '';
+        return `\n  <item>\n    <title>${esc(ep.title)}</title>\n    <description>${esc(ep.description||'')}</description>\n    <pubDate>${esc(ep.date||'')}</pubDate>\n    <enclosure url="${esc(audioUrl)}" type="audio/mpeg"/>\n    <link>${esc(pdfUrl)}</link>\n  </item>`
+      }).join('');
+
+      return `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n<channel>\n  <title>${esc(channel.title)}</title>\n  <link>${esc(channel.link)}</link>\n  <description>${esc(channel.description||'')}</description>${items}\n</channel>\n</rss>`;
+    }
+
+    document.getElementById('btnGenRSS').addEventListener('click', ()=>{
+      const base = document.getElementById('baseUrl').value.trim() || location.origin;
+      if(!base || base === 'null'){
+        if(!confirm('به نظر می‌رسد شما این صفحه را با file:// باز کرده‌اید؛ برای تولید RSS بهتر است یک آدرس پایه (Base URL) مثل https://USERNAME.github.io/REPO را وارد کنید. ادامه می‌دهید؟')) return;
+      }
+      // ساخت آدرس‌های کامل
+      const items = episodes.map(ep => ({
+        title: ep.title,
+        description: ep.description,
+        date: ep.date,
+        fullAudio: (ep.audio && (ep.audio.startsWith('http') ? ep.audio : base.replace(/\/$/,'') + '/' + ep.audio.replace(/^\/+/,''))) ,
+        fullPdf: (ep.pdf && (ep.pdf.startsWith('http') ? ep.pdf : base.replace(/\/$/,'') + '/' + ep.pdf.replace(/^\/+/,'')))
+      }));
+      const rss = makeRss({title: document.title, link: base, description: 'RSS تولید شده توسط سایت نشریه', episodes: items});
+      const blob = new Blob([rss], {type: 'application/rss+xml'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'feed.xml'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      alert('فایل feed.xml تولید و دانلود شد. آن را در ریشهٔ سایت خود (root) آپلود کنید تا پادکست به صورت عمومی در دسترس قرار گیرد.');
+    });
+
+    // === نکته: در حالت file:// ممکن است برخی آدرس‌ها درست کار نکنند ===
+  </script>
+</body>
+</html>
+
